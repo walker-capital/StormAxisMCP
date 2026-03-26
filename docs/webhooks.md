@@ -3,16 +3,15 @@
 StormAxis webhooks push real-time storm notifications to your endpoint the moment a qualifying event is detected in your monitored territories — no polling required.
 
 **Availability:**
-- Professional tier: Add-on at **+$99/mo**
 - Enterprise tier: **Included**
 
 ---
 
 ## Setup
 
-### 1. Enable the add-on (Professional only)
+### 1. Confirm Enterprise access
 
-Go to **[stormaxis.io/partner/billing](https://stormaxis.io/partner/billing)** → Add-ons → Enable **Storm Webhooks** (+$99/mo). Enterprise accounts skip this step.
+Webhooks are available on the **Enterprise** tier ($1,499+/mo). Verify your tier at [stormaxis.io/partner/billing](https://stormaxis.io/partner/billing).
 
 ### 2. Register your endpoint
 
@@ -39,7 +38,7 @@ After saving, copy the **Webhook Secret** from the endpoint detail page. You'll 
 
 ### 5. Test the endpoint
 
-Click **Test Webhook** to send a sample `storm.qualified` payload to your endpoint. Verify you receive it and return a `200` response.
+Click **Test Webhook** to send a sample `storm.scored` payload to your endpoint. Verify you receive it and return a `200` response.
 
 ---
 
@@ -47,37 +46,43 @@ Click **Test Webhook** to send a sample `storm.qualified` payload to your endpoi
 
 | Event | When it fires |
 |---|---|
-| `storm.qualified` | A storm in your territory meets your configured score and magnitude thresholds |
-| `storm.updated` | An existing qualified storm's score has been recomputed and changed by ≥10 points |
-| `storm.expired` | A storm event has aged out of the active window (>30 days) |
-| `pipeline.stale` | The data pipeline has not ingested new events in >48 hours |
+| `storm.scored` | A new storm has been scored and meets your territory/threshold filters |
+| `storm.gold` | A storm reaches Gold status (opportunity score ≥ 70) |
+| `storm.updated` | An existing storm's score has been recomputed and changed by ≥10 points |
+| `properties.available` | New property data is available for ZIP codes in your monitored territory |
+| `pipeline.alert` | A data ingestion pipeline issue has been detected |
 
 ---
 
 ## Event Payload Schema
 
-### `storm.qualified`
+### `storm.scored`
 
 ```json
 {
-  "event": "storm.qualified",
+  "event": "storm.scored",
   "event_id": "evt_01HW4X2MK8FQJZ7NV3PMRB9YD",
   "timestamp": "2026-03-23T14:28:04Z",
-  "storm_id": "TX-2026-hail-00341",
-  "event_type": "Hail",
-  "state": "TX",
-  "county": "Tarrant",
-  "magnitude": 1.75,
-  "magnitude_unit": "inches",
-  "opportunity_score": 87,
-  "simulated_revenue_usd": 2400000,
-  "begin_time": "2026-03-23T14:22:00Z",
-  "affected_zips": ["76109", "76107", "76116"],
-  "territory_match": true,
-  "territory_name": "Fort Worth Metro",
-  "pipeline_staleness_hours": 0.1
+  "data": {
+    "storm_id": "TX-2026-hail-00341",
+    "event_type": "Hail",
+    "state": "TX",
+    "county": "Tarrant",
+    "magnitude": 1.75,
+    "magnitude_unit": "inches",
+    "opportunity_score": 87,
+    "simulated_revenue_usd": 2400000,
+    "begin_time": "2026-03-23T14:22:00Z",
+    "affected_zips": ["76109", "76107", "76116"],
+    "territory_match": true,
+    "territory_name": "Fort Worth Metro"
+  }
 }
 ```
+
+### `storm.gold`
+
+Fires when any storm in your territory crosses the Gold threshold (score ≥ 70). Same payload shape as `storm.scored` with `opportunity_score >= 70`.
 
 ### `storm.updated`
 
@@ -86,37 +91,44 @@ Click **Test Webhook** to send a sample `storm.qualified` payload to your endpoi
   "event": "storm.updated",
   "event_id": "evt_01HW5Y3NL9GRKA8OW4QNSC0ZE",
   "timestamp": "2026-03-23T20:14:00Z",
-  "storm_id": "TX-2026-hail-00341",
-  "previous_score": 74,
-  "current_score": 87,
-  "score_delta": 13,
-  "reason": "MRMS hail validation updated magnitude from 1.25 to 1.75 inches"
+  "data": {
+    "storm_id": "TX-2026-hail-00341",
+    "previous_score": 74,
+    "current_score": 87,
+    "score_delta": 13,
+    "reason": "MRMS hail validation updated magnitude from 1.25 to 1.75 inches"
+  }
 }
 ```
 
-### `storm.expired`
+### `properties.available`
 
 ```json
 {
-  "event": "storm.expired",
+  "event": "properties.available",
   "event_id": "evt_01HW6Z4OM0HSLB9PX5ROTD1AF",
-  "timestamp": "2026-04-22T14:22:00Z",
-  "storm_id": "TX-2026-hail-00341",
-  "final_score": 87,
-  "days_active": 30
+  "timestamp": "2026-03-24T06:00:00Z",
+  "data": {
+    "zip_codes": ["76109", "76107", "76116"],
+    "record_count": 4821,
+    "storm_id": "TX-2026-hail-00341"
+  }
 }
 ```
 
-### `pipeline.stale`
+### `pipeline.alert`
 
 ```json
 {
-  "event": "pipeline.stale",
+  "event": "pipeline.alert",
   "event_id": "evt_01HW7A5PN1ITMCAQY6SUPE2BG",
   "timestamp": "2026-03-25T10:00:00Z",
-  "staleness_hours": 52.3,
-  "last_event_time": "2026-03-23T05:41:00Z",
-  "affected_sources": ["SPC", "NWS"]
+  "data": {
+    "alert_type": "ingestion_stale",
+    "staleness_hours": 52.3,
+    "last_event_time": "2026-03-23T05:41:00Z",
+    "affected_sources": ["SPC", "NWS"]
+  }
 }
 ```
 

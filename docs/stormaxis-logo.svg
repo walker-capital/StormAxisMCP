@@ -1,0 +1,118 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" width="400" height="400">
+  <defs>
+    <radialGradient id="bgGrad" cx="50%" cy="44%" r="65%" gradientUnits="objectBoundingBox">
+      <stop offset="0%" stop-color="#1e293b"/>
+      <stop offset="100%" stop-color="#0a1120"/>
+    </radialGradient>
+    <radialGradient id="sweepGrad" cx="200" cy="180" r="148" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#f59e0b" stop-opacity="0.22"/>
+      <stop offset="100%" stop-color="#f59e0b" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="centerGlow" cx="200" cy="180" r="30" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#f59e0b" stop-opacity="0.18"/>
+      <stop offset="100%" stop-color="#f59e0b" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="dotGlow" x="-80%" y="-80%" width="260%" height="260%">
+      <feGaussianBlur stdDeviation="4" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <filter id="textGlow" x="-10%" y="-30%" width="120%" height="160%">
+      <feGaussianBlur stdDeviation="3" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <clipPath id="roundClip">
+      <rect width="400" height="400" rx="40"/>
+    </clipPath>
+  </defs>
+
+  <!-- Background -->
+  <rect width="400" height="400" rx="40" fill="url(#bgGrad)"/>
+
+  <!-- Clipped content -->
+  <g clip-path="url(#roundClip)">
+
+    <!-- Subtle dot grid -->
+    <pattern id="dotGrid" x="0" y="0" width="20" height="20" patternUnits="userSpaceOnUse">
+      <circle cx="10" cy="10" r="0.8" fill="#334155" opacity="0.4"/>
+    </pattern>
+    <rect width="400" height="400" fill="url(#dotGrid)" opacity="0.6"/>
+
+    <!-- Radar rings -->
+    <circle cx="200" cy="180" r="148" fill="none" stroke="#1e293b" stroke-width="1.2"/>
+    <circle cx="200" cy="180" r="111" fill="none" stroke="#1e293b" stroke-width="1.2"/>
+    <circle cx="200" cy="180" r="74"  fill="none" stroke="#f59e0b" stroke-width="1.5" opacity="0.45"/>
+    <circle cx="200" cy="180" r="37"  fill="none" stroke="#293548" stroke-width="1.2"/>
+
+    <!-- Axis crosshair lines -->
+    <line x1="38"  y1="180" x2="362" y2="180" stroke="#1e293b" stroke-width="1"/>
+    <line x1="200" y1="18"  x2="200" y2="342" stroke="#1e293b" stroke-width="1"/>
+
+    <!-- Cardinal tick marks on outer ring -->
+    <line x1="200" y1="32"  x2="200" y2="44"  stroke="#334155" stroke-width="2" stroke-linecap="round"/>
+    <line x1="348" y1="180" x2="336" y2="180" stroke="#334155" stroke-width="2" stroke-linecap="round"/>
+    <line x1="200" y1="328" x2="200" y2="316" stroke="#334155" stroke-width="2" stroke-linecap="round"/>
+    <line x1="52"  y1="180" x2="64"  y2="180" stroke="#334155" stroke-width="2" stroke-linecap="round"/>
+
+    <!-- Radar sweep wedge — angles: -80° to +10° (upper-right quadrant sweep) -->
+    <!-- Start: (225.7, 34.3)  End: (345.7, 205.7)  sweep < 180° so large-arc=0, clockwise=1 -->
+    <path d="M 200,180 L 226,34 A 148,148 0 0,1 346,206 Z"
+          fill="url(#sweepGrad)"/>
+
+    <!-- Sweep leading edge line -->
+    <line x1="200" y1="180" x2="346" y2="206"
+          stroke="#f59e0b" stroke-width="1.5" opacity="0.55"/>
+
+    <!-- Sweep trailing edge (fainter) -->
+    <line x1="200" y1="180" x2="226" y2="34"
+          stroke="#f59e0b" stroke-width="1" opacity="0.25"/>
+
+    <!-- Center ambient glow -->
+    <circle cx="200" cy="180" r="30" fill="url(#centerGlow)"/>
+
+    <!-- Storm blip on amber ring (~315° — upper left of ring) -->
+    <!-- 315° = -45°: x=200+74*cos(-45°)=252.3, y=180+74*sin(-45°)=127.7 -->
+    <!-- But let's put it inside the sweep zone, so ~-45° (upper right) -->
+    <!-- x=200+74*0.707=252.3, y=180-74*0.707=127.7 -->
+    <circle cx="252" cy="128" r="8"  fill="#f59e0b" opacity="0.2"/>
+    <circle cx="252" cy="128" r="5"  fill="#f59e0b" filter="url(#dotGlow)"/>
+    <circle cx="252" cy="128" r="14" fill="none" stroke="#f59e0b" stroke-width="1" opacity="0.35"/>
+
+    <!-- Secondary blip on ring 2 (~-30°) -->
+    <!-- x=200+111*cos(-30°)=296.1, y=180+111*sin(-30°)=124.5 -->
+    <circle cx="296" cy="125" r="3.5" fill="#f59e0b" opacity="0.55"/>
+    <circle cx="296" cy="125" r="8"   fill="none" stroke="#f59e0b" stroke-width="0.8" opacity="0.3"/>
+
+    <!-- Tertiary blip on outer ring (~-60°) -->
+    <!-- x=200+148*cos(-60°)=274, y=180+148*sin(-60°)=52 -->
+    <circle cx="274" cy="52" r="2.5" fill="#f59e0b" opacity="0.4"/>
+
+    <!-- Center reticle -->
+    <circle cx="200" cy="180" r="14" fill="none" stroke="#f59e0b" stroke-width="1.5" opacity="0.45"/>
+    <circle cx="200" cy="180" r="5"  fill="#f59e0b" filter="url(#dotGlow)"/>
+
+    <!-- Center crosshair nubs -->
+    <line x1="200" y1="161" x2="200" y2="168" stroke="#f59e0b" stroke-width="1.5" opacity="0.7" stroke-linecap="round"/>
+    <line x1="200" y1="192" x2="200" y2="199" stroke="#f59e0b" stroke-width="1.5" opacity="0.7" stroke-linecap="round"/>
+    <line x1="181" y1="180" x2="188" y2="180" stroke="#f59e0b" stroke-width="1.5" opacity="0.7" stroke-linecap="round"/>
+    <line x1="212" y1="180" x2="219" y2="180" stroke="#f59e0b" stroke-width="1.5" opacity="0.7" stroke-linecap="round"/>
+
+  </g>
+
+  <!-- Wordmark — outside clip so it sits cleanly at bottom -->
+  <text
+    font-family="'Barlow Condensed', 'Arial Narrow', 'Impact', sans-serif"
+    font-weight="800"
+    font-size="40"
+    letter-spacing="3"
+    text-anchor="middle"
+    filter="url(#textGlow)">
+    <tspan x="182" y="377" fill="#f8fafc">STORM</tspan><tspan fill="#f59e0b">AXIS</tspan>
+  </text>
+
+</svg>

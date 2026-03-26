@@ -47,7 +47,9 @@ You should see `pipeline_active: true` and a `latest_event_time` within the last
 
 ---
 
-## Claude Desktop Setup
+## Alternative Setup Methods
+
+### Claude Desktop (via mcp-remote)
 
 Add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
 
@@ -65,22 +67,54 @@ Add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
 }
 ```
 
+### Standalone npm server (stdio)
+
+```bash
+npm install -g stormaxis-mcp
+```
+
+Add to `claude_desktop_config.json`:
+
+```json
+{
+  "mcpServers": {
+    "stormaxis": {
+      "command": "stormaxis-mcp",
+      "env": {
+        "STORMAXIS_API_KEY": "YOUR_API_KEY"
+      }
+    }
+  }
+}
+```
+
+### Local development
+
+```bash
+git clone https://github.com/stormaxis/stormaxis-mcp
+cd stormaxis-mcp
+cp .env.example .env          # add your API key
+npm install
+npm run build
+npm start
+```
+
 ---
 
 ## Tool Reference
 
-Full mapping of MCP tools to their underlying REST endpoints.
+Full mapping of MCP tools to their underlying Partner API endpoints.
 
-| MCP Tool | REST Endpoint | Tier | Parameters | Description |
+| MCP Tool | REST Endpoint | Tier | Key Parameters | Description |
 |---|---|---|---|---|
-| `get_storm_overview` | `GET /api/storm-intelligence/overview` | Growth | — | Real-time US storm snapshot — counts by type, top states, SPC outlook |
-| `get_top_opportunities` | `GET /api/opportunity-radar/storm-events` | Growth | `state?` `min_score?` `limit?` | Last 30 days of storms ranked by opportunity score (0–100) |
-| `get_storm_score` | `GET /api/stormstrike/target` | Growth | `storm_id` | Full composite score breakdown: storm relevance, property economics, replacement probability |
-| `search_properties` | `GET /api/data-moat/parcels` | Professional | `zip_code` `owner_type?` `min_roof_age?` `min_sqft?` `limit?` | Owner + property records for door-knock targeting |
-| `get_canvass_clusters` | `GET /api/stormstrike/canvass-clusters` | Professional | `storm_id` `min_score?` `limit?` | H3 hexagonal canvass zones ranked by doors/hour × owner-occupancy |
-| `get_insurance_propensity` | `GET /api/storm-analytics/insurance-propensity-state` | Growth | `state?` | Claim culture score + avg payout per state |
-| `get_fema_claims` | `GET /api/storm-analytics/fema-claims` | Professional | `state` `year_start?` `year_end?` | Historical NFIP flood claims aggregated by ZIP |
-| `get_pipeline_status` | `GET /api/storm-intelligence/pipeline-status` | Growth | — | Data freshness and ingestion health check |
+| `get_storm_overview` | `GET /api/v1/partner/storm/overview` | Growth | — | US storm snapshot — counts by type, top states, SPC outlook |
+| `get_top_opportunities` | `GET /api/v1/partner/opportunities/top` | Growth | `state?` `min_score?` `limit?` | Last 30 days of storms ranked by opportunity score (0–100) |
+| `get_storm_score` | `GET /api/v1/partner/storm/{id}/score` | Growth | `storm_id` | Full composite score breakdown: storm relevance, property economics, replacement probability |
+| `search_properties` | `GET /api/v1/partner/properties/{zip}` | Professional | `zip_code` `owner_type?` `min_roof_age?` `min_sqft?` `limit?` | Owner + property records for door-knock targeting |
+| `get_canvass_clusters` | `GET /api/v1/partner/clusters/{storm_id}` | Professional | `storm_id` `min_score?` `limit?` | H3 hexagonal canvass zones ranked by doors/hour × owner-occupancy |
+| `get_insurance_propensity` | `GET /api/v1/partner/analytics/insurance-propensity` | Growth | `state?` | Claim culture score + avg payout per state |
+| `get_fema_claims` | `GET /api/v1/partner/fema/claims` | Professional | `state` `year_start?` `year_end?` | Historical NFIP flood claims aggregated by ZIP |
+| `get_pipeline_status` | `GET /api/v1/partner/pipeline/status` | Growth | — | Data freshness and ingestion health check |
 
 ### Score Components (`get_storm_score`)
 
@@ -89,6 +123,17 @@ Full mapping of MCP tools to their underlying REST endpoints.
 | `storm_relevance_score` | Recency, magnitude, NWS confirmation |
 | `property_economics_score` | Avg property value, roof age, density |
 | `replacement_probability` | ML prediction of claim conversion likelihood |
+
+---
+
+## Prompts
+
+The server ships two pre-built prompt templates that chain multiple tools into a single natural-language request:
+
+| Prompt | Arguments | Description |
+|---|---|---|
+| `storm_assessment` | `state` (default: `TX`) | Full briefing: overview → top opportunities → score breakdown → property targeting |
+| `property_search` | `zip_code` (default: `76109`) | Find older-roof properties in a ZIP with active storm context |
 
 ---
 
@@ -120,16 +165,16 @@ Full mapping of MCP tools to their underlying REST endpoints.
 
 ## Pricing
 
-| Tier | Price | Daily API Calls | MCP Access | Tools Available |
-|---|---|---|---|---|
-| **Sandbox** | Free | 100 | No | Dashboard only |
-| **Growth** | $199/mo | 5,000 | Yes | `get_storm_overview`, `get_top_opportunities`, `get_storm_score`, `get_insurance_propensity`, `get_pipeline_status` |
-| **Professional** | $499/mo | 25,000 | Yes | All 8 tools + Webhook add-on (+$99/mo) |
-| **Enterprise** | $1,499+/mo | 100,000 | Yes | All tools + webhooks included + SLA + white-label |
+| Tier | Price | Daily API Calls | MCP Access | Tools Available | Webhooks |
+|---|---|---|---|---|---|
+| **Sandbox** | Free | 100 | No | Dashboard only | No |
+| **Growth** | $199/mo | 5,000 | Yes | `get_storm_overview`, `get_top_opportunities`, `get_storm_score`, `get_insurance_propensity`, `get_pipeline_status` | No |
+| **Professional** | $499/mo | 25,000 | Yes | All 8 tools | No |
+| **Enterprise** | $1,499+/mo | 100,000 | Yes | All tools + Bulk Export | Included |
 
-Overage pricing: $0.05–$0.08 per 1,000 calls on Growth and above.
+Overage: $0.05–$0.08 per 1,000 calls on Growth and above.
 
-> **Webhook Subscriptions** are available as an add-on on Professional (+$99/mo) and are included on Enterprise. Webhooks fire in real time when a qualifying storm is detected in your monitored territories. See [/docs/webhooks.md](docs/webhooks.md).
+> **Webhook Subscriptions** (`storm.scored`, `storm.gold`, `storm.updated`, `properties.available`, `pipeline.alert`) are available on **Enterprise** tier and are included in the base price. See [/docs/webhooks.md](docs/webhooks.md).
 
 ---
 

@@ -1,6 +1,6 @@
 {
   "name": "stormaxis-mcp",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "StormAxis MCP server — real-time US storm intelligence for AI agents",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -14,10 +14,12 @@
     "start": "node dist/index.js",
     "lint": "eslint src --ext .ts",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "prepublishOnly": "npm run build"
   },
   "keywords": [
     "mcp",
+    "model-context-protocol",
     "storm",
     "hail",
     "roofing",
@@ -26,7 +28,9 @@
     "weather",
     "intelligence",
     "property",
-    "insurance"
+    "insurance",
+    "catastrophe",
+    "restoration"
   ],
   "author": "StormAxis <tyler@stormaxis.io>",
   "license": "MIT",
@@ -40,17 +44,17 @@
     "email": "tyler@stormaxis.io"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.0.0",
-    "zod": "^3.22.4"
+    "@modelcontextprotocol/sdk": "^1.10.0",
+    "zod": "^3.23.8"
   },
   "devDependencies": {
-    "@types/node": "^20.11.0",
+    "@types/node": "^22.0.0",
     "@typescript-eslint/eslint-plugin": "^7.0.0",
     "@typescript-eslint/parser": "^7.0.0",
     "eslint": "^8.57.0",
-    "tsx": "^4.7.0",
-    "typescript": "^5.3.3",
-    "vitest": "^1.2.0"
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.0",
+    "vitest": "^2.0.0"
   },
   "engines": {
     "node": ">=18.0.0"

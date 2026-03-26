@@ -10,9 +10,9 @@ All StormAxis API and MCP requests require a Partner API key passed as the `X-AP
 2. Select a tier (Growth or above for MCP access)
 3. Your API key is displayed immediately on the dashboard — copy it now, it won't be shown again in full
 
-Keys are in the format: `sa_live_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx`
+Keys are in the format: `sa_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx` (48 characters after the `sa_` prefix).
 
-Sandbox keys follow the format: `sa_sandbox_xxxxxxxx` — these are rejected at MCP connection time.
+Sandbox keys have the same format but are scoped to the Sandbox tier — they are rejected at MCP connection time.
 
 ---
 
@@ -49,13 +49,13 @@ In `~/Library/Application Support/Claude/claude_desktop_config.json`:
 
 ```bash
 curl -H "X-API-Key: YOUR_API_KEY" \
-  https://stormaxis.io/api/storm-intelligence/overview
+  https://stormaxis.io/api/v1/partner/storm/overview
 ```
 
 ### Environment Variable (Node.js)
 
 ```javascript
-const response = await fetch('https://stormaxis.io/api/storm-intelligence/overview', {
+const response = await fetch('https://stormaxis.io/api/v1/partner/storm/overview', {
   headers: {
     'X-API-Key': process.env.STORMAXIS_API_KEY
   }
@@ -81,7 +81,7 @@ Never hardcode API keys in source files. Always use environment variables or a s
 | **`search_properties`** | No | No | Yes | Yes |
 | **`get_canvass_clusters`** | No | No | Yes | Yes |
 | **`get_fema_claims`** | No | No | Yes | Yes |
-| **Webhook Subscriptions** | No | No | Add-on (+$99/mo) | Included |
+| **Webhook Subscriptions** | No | No | No | Included |
 | **SLA** | No | No | No | Yes |
 | **White-label** | No | No | No | Yes |
 | **Dedicated Support** | No | No | No | Yes |

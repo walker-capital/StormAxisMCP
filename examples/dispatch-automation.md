@@ -2,7 +2,7 @@
 
 This example shows how to use StormAxis webhook subscriptions to automatically trigger crew dispatch when a qualifying storm is detected in your monitored territories. The agent listens for incoming storm webhook events and executes a dispatch workflow — no manual monitoring required.
 
-**Requires:** StormAxis Professional tier + Webhook add-on (+$99/mo), or Enterprise (webhooks included).
+**Requires:** StormAxis **Enterprise** tier (webhooks included at $1,499+/mo).
 
 > See [/docs/webhooks.md](../docs/webhooks.md) for full webhook setup, event schema, and security configuration.
 
@@ -14,7 +14,7 @@ This example shows how to use StormAxis webhook subscriptions to automatically t
 StormAxis Platform
         │
         │  POST /your-webhook-endpoint
-        │  (storm.qualified event)
+        │  (storm.scored / storm.gold event)
         ▼
 Your Webhook Receiver
         │
@@ -37,19 +37,24 @@ You are a storm dispatch automation agent. When a qualifying storm event fires v
 your job is to validate it, gather operational intelligence, and prepare a dispatch packet
 for the field operations manager — or auto-dispatch if the event meets auto-dispatch criteria.
 
-You will receive a webhook payload in this format:
+You will receive a webhook payload in this format (storm.scored or storm.gold events):
 {
-  "event": "storm.qualified",
-  "storm_id": "TX-2026-hail-00341",
-  "event_type": "Hail",
-  "state": "TX",
-  "county": "Tarrant",
-  "magnitude": 1.75,
-  "opportunity_score": 87,
-  "begin_time": "2026-03-23T14:22:00Z",
-  "affected_zips": ["76109", "76107", "76116"],
-  "territory_match": true,
-  "territory_name": "Fort Worth Metro"
+  "event": "storm.scored",
+  "event_id": "evt_01HW4X2MK8FQJZ7NV3PMRB9YD",
+  "timestamp": "2026-03-23T14:28:04Z",
+  "data": {
+    "storm_id": "TX-2026-hail-00341",
+    "event_type": "Hail",
+    "state": "TX",
+    "county": "Tarrant",
+    "magnitude": 1.75,
+    "opportunity_score": 87,
+    "simulated_revenue_usd": 2400000,
+    "begin_time": "2026-03-23T14:22:00Z",
+    "affected_zips": ["76109", "76107", "76116"],
+    "territory_match": true,
+    "territory_name": "Fort Worth Metro"
+  }
 }
 
 DISPATCH WORKFLOW:
@@ -164,8 +169,9 @@ app.post('/webhooks/stormaxis', async (req, res) => {
 
   const event = req.body;
 
-  // Only process qualifying storm events in your territories
-  if (event.event !== 'storm.qualified' || !event.territory_match) {
+  // Only process storm.scored and storm.gold events for your territories
+  const stormEvents = ['storm.scored', 'storm.gold'];
+  if (!stormEvents.includes(event.event) || !event.data?.territory_match) {
     return res.status(200).json({ received: true, action: 'skipped' });
   }
 
@@ -218,15 +224,15 @@ See [/docs/webhooks.md](../docs/webhooks.md) for the full event schema and all f
 
 ---
 
-## Pricing Note
+## Tier Requirement
 
-Webhook subscriptions are available on:
+Webhook subscriptions are **Enterprise-only**:
 
 | Tier | Webhook Access | Price |
 |---|---|---|
 | Sandbox | No | Free |
 | Growth | No | $199/mo |
-| **Professional** | **Add-on** | **$499/mo + $99/mo** |
+| Professional | No | $499/mo |
 | **Enterprise** | **Included** | **$1,499+/mo** |
 
 Webhooks count against your daily API call limit at 1 call per event delivered.
