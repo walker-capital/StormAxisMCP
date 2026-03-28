@@ -56,6 +56,12 @@ if (!API_KEY) {
 
 // ── HTTP Client ──────────────────────────────────────────────────────────────
 
+const DEFAULT_HEADERS = {
+  "X-API-Key": API_KEY!,
+  "Content-Type": "application/json",
+  "User-Agent": "stormaxis-mcp/1.2.0",
+};
+
 async function apiGet<T>(
   path: string,
   params?: Record<string, string | number | undefined>
@@ -71,19 +77,33 @@ async function apiGet<T>(
 
   const res = await fetch(url.toString(), {
     method: "GET",
-    headers: {
-      "X-API-Key": API_KEY!,
-      "Content-Type": "application/json",
-      "User-Agent": "stormaxis-mcp/1.2.0",
-    },
+    headers: DEFAULT_HEADERS,
   });
 
+  return handleResponse<T>(res);
+}
+
+async function apiPost<T>(
+  path: string,
+  body: Record<string, unknown>
+): Promise<T> {
+  const url = new URL(`${API_BASE}${path}`);
+  const res = await fetch(url.toString(), {
+    method: "POST",
+    headers: DEFAULT_HEADERS,
+    body: JSON.stringify(body),
+  });
+
+  return handleResponse<T>(res);
+}
+
+async function handleResponse<T>(res: Response): Promise<T> {
   if (!res.ok) {
-    const body = await res.text().catch(() => "");
-    let message = body;
+    const raw = await res.text().catch(() => "");
+    let message = raw;
     try {
-      const json = JSON.parse(body);
-      message = json.detail ?? json.message ?? json.error ?? body;
+      const json = JSON.parse(raw);
+      message = json.detail ?? json.message ?? json.error ?? raw;
     } catch {
       // use raw body
     }
@@ -94,7 +114,6 @@ async function apiGet<T>(
       `StormAxis API error ${res.status}: ${message}`
     );
   }
-
   return res.json() as Promise<T>;
 }
 
@@ -121,6 +140,16 @@ const GetTopOpportunitiesSchema = z.object({
     .max(50)
     .default(10)
     .describe("Max results. Default 10, max 50."),
+});
+
+const GetForecastSchema = z.object({
+  days: z
+    .number()
+    .int()
+    .min(1)
+    .max(7)
+    .default(3)
+    .describe("Number of forecast days to return (1-7). Default 3."),
 });
 
 const GetStormScoreSchema = z.object({
@@ -154,12 +183,18 @@ const SearchPropertiesSchema = z.object({
 
 const GetCanvassClustersSchema = z.object({
   storm_id: z.string().min(1).describe("Storm episode ID"),
-  min_score: z
+  radius_miles: z
     .number()
-    .min(0)
-    .max(1)
-    .default(0.3)
-    .describe("Min cluster priority score 0-1. Default 0.3."),
+    .min(1)
+    .max(100)
+    .default(15)
+    .describe("Search radius from storm center in miles. Default 15."),
+  min_roof_age: z
+    .number()
+    .int()
+    .min(1)
+    .default(10)
+    .describe("Minimum average roof age for included areas. Default 10 years."),
   limit: z
     .number()
     .int()
@@ -245,15 +280,19 @@ const TOOLS = [
   {
     name: "get_forecast_opportunities",
     description:
-      "Get scored forecast opportunities — storms that haven't hit yet. " +
-      "Analyzes today's and tomorrow's SPC convective outlooks (hail, wind, tornado probability " +
-      "polygons) and cross-references with property exposure data to predict WHERE the best " +
-      "revenue opportunities will be BEFORE storms actually hit. " +
-      "Returns ranked opportunities with: threat type, probability, estimated revenue, " +
-      "and top affected cities. Use this to position crews and pre-stage materials in advance.",
+      "Get SPC convective outlook forecast data for the next 1-7 days. " +
+      "Returns risk zones and outlook levels (MRGL, SLGT, ENH, MDT, HIGH) from NOAA Storm Prediction Center. " +
+      "Use this to anticipate where storms will hit before they occur so crews can be pre-positioned. " +
+      "Available on all tiers including Sandbox.",
     inputSchema: {
       type: "object" as const,
-      properties: {},
+      properties: {
+        days: {
+          type: "number",
+          description: "Number of forecast days to return (1-7). Default 3.",
+          default: 3,
+        },
+      },
       required: [],
     },
   },
@@ -340,11 +379,10 @@ const TOOLS = [
   {
     name: "get_canvass_clusters",
     description:
-      "Get pre-computed H3 hexagonal canvass clusters for a storm event. " +
-      "Clusters are ranked by priority score combining roof age, building density, " +
-      "property values, and distance from storm center. " +
-      "Returns center coordinates, building count, avg roof age, and estimated revenue per cluster. " +
-      "Requires Professional tier.",
+      "Get neighborhood-level canvass clusters for a storm event, ranked by priority. " +
+      "Returns ZIP-level clusters with: building count, avg roof age, property values, " +
+      "distance from storm center, and a composite priority score. " +
+      "Use to identify which neighborhoods to target first. Requires Professional tier.",
     inputSchema: {
       type: "object" as const,
       properties: {
@@ -352,10 +390,15 @@ const TOOLS = [
           type: "string",
           description: "Storm episode ID from get_top_opportunities.",
         },
-        min_score: {
+        radius_miles: {
           type: "number",
-          description: "Min cluster priority score 0-1. Default 0.3.",
-          default: 0.3,
+          description: "Search radius from storm center in miles. Default 15.",
+          default: 15,
+        },
+        min_roof_age: {
+          type: "number",
+          description: "Min average roof age for included areas. Default 10 years.",
+          default: 10,
         },
         limit: {
           type: "number",
@@ -369,11 +412,10 @@ const TOOLS = [
   {
     name: "generate_neighborhood_targeting",
     description:
-      "Generate neighborhood-level door-knocking targets for a storm. " +
-      "Returns ZIP clusters ranked by canvass priority with property details including " +
-      "buildings, roof ages, property values, and distance from storm center. " +
-      "Use to plan canvassing routes — start with the highest priority clusters " +
-      "(older roofs, more buildings, closer to storm center). Requires Professional tier.",
+      "Generate neighborhood-level door-knocking targets for a storm with sample property addresses. " +
+      "Returns ZIP clusters ranked by canvass priority (older roofs, more buildings, closer to storm center) " +
+      "plus a sample list of individual property addresses and owner names for the top ZIPs. " +
+      "Use this when you need specific addresses to start canvassing. Requires Professional tier.",
     inputSchema: {
       type: "object" as const,
       properties: {
@@ -465,7 +507,7 @@ const PROMPTS = [
     name: "storm_assessment",
     description:
       "Generate a complete storm intelligence briefing for a US state. " +
-      "Chains: overview → forecast opportunities → top confirmed opportunities → score breakdown → property targeting.",
+      "Chains: overview → forecast → top confirmed opportunities → score breakdown → property targeting.",
     arguments: [
       {
         name: "state",
@@ -517,8 +559,12 @@ async function handleTool(
     }
 
     case "get_forecast_opportunities": {
+      // Endpoint: GET /v1/partner/storm/forecasts
+      // Returns SPC convective outlook zones for the next N days
+      const input = GetForecastSchema.parse(args);
       const data = await apiGet<ForecastOpportunitiesResponse>(
-        "/v1/partner/forecast/opportunities"
+        "/v1/partner/storm/forecasts",
+        { days: input.days }
       );
       return JSON.stringify(data, null, 2);
     }
@@ -559,11 +605,16 @@ async function handleTool(
     }
 
     case "get_canvass_clusters": {
+      // Endpoint: POST /v1/partner/targeting/generate
+      // No H3-by-storm endpoint exists in the partner API; targeting/generate
+      // is the closest equivalent, returning ZIP-level cluster data for a storm.
       const input = GetCanvassClustersSchema.parse(args);
-      const data = await apiGet<CanvassClustersResponse>(
-        `/v1/partner/clusters/${encodeURIComponent(input.storm_id)}`,
+      const data = await apiPost<CanvassClustersResponse>(
+        "/v1/partner/targeting/generate",
         {
-          min_score: input.min_score,
+          storm_id: input.storm_id,
+          radius_miles: input.radius_miles,
+          min_roof_age: input.min_roof_age,
           limit: input.limit,
         }
       );
@@ -571,10 +622,12 @@ async function handleTool(
     }
 
     case "generate_neighborhood_targeting": {
+      // Endpoint: POST /v1/partner/targeting/generate
       const input = GetNeighborhoodTargetingSchema.parse(args);
-      const data = await apiGet<NeighborhoodTargetingResponse>(
-        `/v1/partner/targeting/${encodeURIComponent(input.storm_id)}`,
+      const data = await apiPost<NeighborhoodTargetingResponse>(
+        "/v1/partner/targeting/generate",
         {
+          storm_id: input.storm_id,
           radius_miles: input.radius_miles,
           min_roof_age: input.min_roof_age,
           limit: input.limit,
@@ -633,7 +686,7 @@ function handlePrompt(
           text:
             `Give me a complete storm assessment for ${state}. ` +
             `Start with get_storm_overview for current US activity, ` +
-            `then get_forecast_opportunities to see what's coming, ` +
+            `then get_forecast_opportunities to see what's coming in the next 3 days, ` +
             `then get_top_opportunities with state="${state}" for recent confirmed storms, ` +
             `then get_storm_score on the #1 ranked opportunity for a full score breakdown, ` +
             `and finally search_properties on the best ZIP in that storm's area to generate a canvass lead list.`,
@@ -664,8 +717,8 @@ function handlePrompt(
           type: "text",
           text:
             `Plan an optimized canvassing route for storm ${stormId}. ` +
-            `Start with generate_neighborhood_targeting for storm_id="${stormId}" to get ZIP-level priority clusters. ` +
-            `Then use get_canvass_clusters for storm_id="${stormId}" to get H3 hex-level detail on the top areas. ` +
+            `Start with generate_neighborhood_targeting for storm_id="${stormId}" to get ZIP-level priority clusters with sample addresses. ` +
+            `Then use get_canvass_clusters for storm_id="${stormId}" to confirm the top neighborhoods. ` +
             `Finally use search_properties on the top ZIP code to get individual property addresses and owner names. ` +
             `Present the route plan with highest-priority areas first.`,
         },
