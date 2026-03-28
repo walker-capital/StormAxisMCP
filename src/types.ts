@@ -46,6 +46,26 @@ export interface TopOpportunitiesResponse {
   min_score?: number;
 }
 
+// ── Forecast Opportunities ───────────────────────────────────────────────────
+
+export interface ForecastOpportunity {
+  threat_type: string;
+  primary_state: string;
+  states_affected: string[];
+  estimated_event_type: string;
+  forecast_score: number;        // 0-1
+  probability: number;           // 0-1
+  risk_label: string;
+  estimated_revenue: number;
+  top_cities: Array<{ city: string; [key: string]: unknown }>;
+}
+
+export interface ForecastOpportunitiesResponse {
+  opportunities: ForecastOpportunity[];
+  count: number;
+  generated_at?: string;
+}
+
 // ── Storm Score ──────────────────────────────────────────────────────────────
 
 export interface StormScoreResponse {
@@ -82,21 +102,54 @@ export interface PropertySearchResponse {
 
 // ── Canvass Clusters ─────────────────────────────────────────────────────────
 
+/** Matches actual backend response fields from storm_h3_clusters */
 export interface CanvassCluster {
-  storm_event_id: string;
-  h3_index: string;
-  opportunity_score: number;
-  property_count?: number;
-  owner_occupancy_rate?: number;
-  center_lat?: number;
-  center_lng?: number;
-  [key: string]: unknown;
+  h3: string;              // H3 hex index
+  lat: number;
+  lng: number;
+  buildings: number;
+  avg_value: number;       // Average property value USD
+  roof_age: number;        // Average roof age in years
+  distance_mi: number;     // Distance from storm center in miles
+  priority: number;        // Priority score 0-1
+  est_revenue: number;     // Estimated revenue USD
 }
 
 export interface CanvassClustersResponse {
   clusters: CanvassCluster[];
   count: number;
   storm_id: string;
+  total_buildings: number;
+}
+
+// ── Neighborhood Targeting ───────────────────────────────────────────────────
+
+export interface NeighborhoodCluster {
+  zip: string;
+  city: string;
+  state: string;
+  buildings: number;
+  avg_value: number;
+  roof_age: number;
+  distance_mi: number;
+  priority: number;        // Composite priority score 0-1
+}
+
+export interface NeighborhoodTargetingResponse {
+  storm_id: string;
+  center: { lat: number; lng: number };
+  event_type?: string;
+  magnitude?: number;
+  clusters: NeighborhoodCluster[];
+  total_buildings: number;
+  sample_properties?: Array<{
+    property_address?: string;
+    zip_code?: string;
+    owner_name?: string;
+    year_built?: number;
+    building_sqft?: number;
+    [key: string]: unknown;
+  }>;
 }
 
 // ── Insurance Propensity ─────────────────────────────────────────────────────
@@ -137,6 +190,7 @@ export interface DataSourceStatus {
 
 export interface PipelineStatusResponse {
   pipeline_active: boolean;
+  staleness_hours: number | null;
   total_events: number;
   total_scored: number;
   latest_event_time: string | null;
@@ -151,11 +205,11 @@ export interface PipelineStatusResponse {
 // ── Webhook Event Types (for reference) ──────────────────────────────────────
 
 export type WebhookEventType =
-  | "storm.scored"       // New storm scored above partner's threshold
-  | "storm.gold"         // Storm reaches Gold status (score ≥ 70)
-  | "storm.updated"      // Existing storm re-scored, delta > 10 points
-  | "properties.available" // New property data in partner's territory
-  | "pipeline.alert";    // Data ingestion pipeline issue
+  | "storm.scored"          // New storm scored above partner's threshold
+  | "storm.gold"            // Storm reaches Gold status (score ≥ 70)
+  | "storm.updated"         // Existing storm re-scored, delta > 10 points
+  | "properties.available"  // New property data in partner's territory
+  | "pipeline.alert";       // Data ingestion pipeline issue
 
 export interface WebhookPayload<T = unknown> {
   event: WebhookEventType;
